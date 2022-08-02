@@ -1,7 +1,10 @@
 [workspace]
 members = [
     "node",
-    "pallets/template",
+    "pallets/dex",
+    "pallets/dex/rpc",
+    "pallets/dex/runtime-api",
+    "pallets/marketplace",
     "runtime",
 ]
 [profile.release]
