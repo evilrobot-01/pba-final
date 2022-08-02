@@ -16,6 +16,8 @@ The implementation is described below, which has been integrated into a working 
 I had also hoped to create a simple swap UI using [Yew](https://yew.rs/), and explore creating a WebAssembly wrapper such as
 [eth-wasm](https://github.com/evilrobotindustries/eth-wasm), but sadly ran out of time.
 
+A special thanks to Sacha and Joshy for their help and patience!
+
 ## Implementation
 The [Substrate node template](https://github.com/substrate-developer-hub/substrate-node-template) has been forked 
 and the following pallets have been added. The pallets have been integrated into a working now and the 
