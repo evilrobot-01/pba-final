@@ -24,7 +24,8 @@ and the following pallets have been added. The pallets have been integrated into
 runtime configuration can be found [here](runtime/src/lib.rs).
 
 ### Pallets
-The pallets used to implement the solution are as follows, shown in a somewhat layered order.
+The pallets used to implement the solution are as follows, shown in a somewhat layered order. They unfortunately do 
+not currently provide any protection against front-runnning/sandwich attacks so this is definitely an area to improve.
 
 #### [Assets](https://github.com/paritytech/substrate/tree/master/frame/assets) 
   - An existing FRAME pallet provided by Substrate, used to add multi-asset support
@@ -50,10 +51,11 @@ The pallets used to implement the solution are as follows, shown in a somewhat l
   - Existing FRAME pallet provided by Substrate, used to add non-fungible token support
 
 #### **[Marketplace](pallets/marketplace)**
-  - A custom pallet for implementing a simple NFT marketplace
+  - A custom pallet for implementing a very simple NFT marketplace
   - Uses the [uniques](https://github.com/paritytech/substrate/tree/master/frame/uniques) pallet
-  - Uses the [DEX](pallets/dex) pallet to auto-swap assets to facilitate buying/selling using any asset/token. It 
-    also adds the `Price` trait bound fir future use.
+  - Uses the [DEX](pallets/dex) pallet to auto-swap assets to facilitate buying/selling and minting using any 
+    asset/token. The pallet will first request the current price from the DEX to ensure that the buyer/minter will 
+    have sufficient after the swap to complete the purchase/mint.
 
 ### Genesis Config
 The [genesis config](node/src/chain_spec.rs) of the chain contains the below:
