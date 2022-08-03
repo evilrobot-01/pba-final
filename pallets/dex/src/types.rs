@@ -35,7 +35,7 @@ impl<T: Config> LiquidityPool<T> {
 		//  - Currently storing identifiers of liquidity pool tokens at end of u32 range due to time constraints
 		//  - This should ideally use a hash for asset id to make this easier, but seems assets pallet has a trait
 		// bound not provided by default hash type
-Min		let id = <LiquidityPoolAssetIdGenerator<T>>::get()
+		let id = <LiquidityPoolAssetIdGenerator<T>>::get()
 			.unwrap_or_else(|| AssetIdOf::<T>::max_value());
 
 		// Ensure asset id not already in use
@@ -127,7 +127,7 @@ Min		let id = <LiquidityPoolAssetIdGenerator<T>>::get()
 		// Get balances of each asset in the pool and calculate the price
 		let input_reserve = <Pallet<T>>::balance(asset, &self.account);
 		let output_reserve = <Pallet<T>>::balance(other, &self.account);
-		Self::calculate(input_amount, input_reserve, output_reserve)
+		Self::calculate(input_amount, input_reserve - input_amount, output_reserve)
 	}
 
 	/// Calculates the output amount of asset `other`, given an input `amount` and asset.   
@@ -359,8 +359,8 @@ mod tests {
 
 			// Check prices
 			assert_eq!(<LiquidityPool<Test>>::calculate(1 * UNITS, 10 * UNITS, 500 * UNITS), 45330);
-			assert_eq!(pool.calculate_price((1 * UNITS, ASSET_0)), 45330);
-			assert_eq!(pool.calculate_price((50 * UNITS, ASSET_1)), 906);
+			assert_eq!(pool.calculate_price((1 * UNITS, ASSET_0)), 49864);
+			assert_eq!(pool.calculate_price((50 * UNITS, ASSET_1)), 997);
 
 			// Check pool balances
 			assert_eq!(Assets::balance(ASSET_0, pool.account), 10 * UNITS);
@@ -393,8 +393,8 @@ mod tests {
 
 			// Check price
 			assert_eq!(<LiquidityPool<Test>>::calculate(1 * UNITS, 10 * UNITS, 500 * UNITS), 45330);
-			assert_eq!(pool.calculate_price((1 * UNITS, NATIVE_TOKEN)), 45330);
-			assert_eq!(pool.calculate_price((50 * UNITS, ASSET_1)), 906);
+			assert_eq!(pool.calculate_price((1 * UNITS, NATIVE_TOKEN)), 49864);
+			assert_eq!(pool.calculate_price((50 * UNITS, ASSET_1)), 997);
 
 			// Check pool balances
 			assert_eq!(Balances::balance(&pool.account), 10 * UNITS);

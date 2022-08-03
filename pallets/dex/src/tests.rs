@@ -207,6 +207,8 @@ fn adds_liquidity() {
 		assert_eq!(Assets::balance(ASSET_0, &LP), 80 * UNITS);
 		assert_eq!(Assets::balance(ASSET_1, &LP), 90 * UNITS);
 		assert_eq!(Assets::balance(pool.id, &LP), 20 * UNITS);
+
+		check_pool_balances((ASSET_0, ASSET_1), (20 * UNITS, 10 * UNITS, 20 * UNITS));
 	});
 }
 
@@ -322,6 +324,8 @@ fn removes_liquidity() {
 		assert_eq!(Assets::balance(ASSET_0, &LP), 100 * UNITS);
 		assert_eq!(Assets::balance(ASSET_1, &LP), 100 * UNITS);
 		assert_eq!(Assets::balance(pool.id, &LP), 0);
+
+		check_pool_balances((ASSET_0, ASSET_1), (0, 0, 0));
 	});
 }
 
@@ -359,6 +363,7 @@ fn removes_some_liquidity() {
 		assert_eq!(Assets::balance(ASSET_0, &LP), 90 * UNITS);
 		assert_eq!(Assets::balance(ASSET_1, &LP), 95 * UNITS);
 		assert_eq!(Assets::balance(pool.id, &LP), 10 * UNITS);
+		check_pool_balances((ASSET_0, ASSET_1), (10 * UNITS, 5 * UNITS, 10 * UNITS));
 	});
 }
 
@@ -559,6 +564,7 @@ fn gets_price() {
 			DEADLINE
 		));
 
-		assert_eq!(DEX::price(5 * UNITS, ASSET_0, ASSET_1).unwrap(), 10 * UNITS);
+		// Price a swap
+		assert_eq!(DEX::price(5 * UNITS, ASSET_0, ASSET_1).unwrap(), 9984);
 	});
 }
