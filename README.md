@@ -46,7 +46,7 @@ not currently provide any protection against front-runnning/sandwich attacks so 
   - A runtime API has also been implemented to provide price oracle functionality. The final portion of implementing a 
     RPC client could not be completed due to trait compiler issues, but I feel like I was on the right track. See 
     [here](node/src/rpc.rs) and [here](pallets/dex/rpc) and the end of [here](runtime/src/lib.rs).
-  - 97% test coverage ✅
+  - 97+% test coverage ✅
 
 #### [Uniques](https://github.com/paritytech/substrate/tree/master/frame/uniques)
   - Existing FRAME pallet provided by Substrate, used to add non-fungible token support
@@ -81,3 +81,14 @@ The following liquidity pools are created at genesis, funded exclusively by Alic
 | 4,294,967,295 | UNIT / EVIL | 100,000 UNIT / 10,000,000 EVIL |
 | 4,294,967,294 | UNIT / WETH | 100,000 UNIT / 1,000,000 WETH  |
 | 4,294,967,293 | UNIT / WBTC | 100,000 UNIT / 500,000 WBTC    |
+
+## Next Steps
+The following areas need work and should be considered as next steps:
+
+- Convert all calculations to use the `checked_` variations.
+- Better handling of minimum/maximum quantities when swapping and slippage.
+- Implement tests for the marketplace pallet.
+- Complete the pricing oracle JSON RPC implementation.
+- Implement a user interface for allowing users to swap assets:
+  - Listing available liquidity pools (pairs)
+  - Requesting number of expected output tokens by providing an input quantity and asset type.

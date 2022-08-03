@@ -4,6 +4,7 @@ use frame_support::{
 	traits::fungibles::Mutate,
 	traits::fungibles::{Create, Inspect},
 };
+use sp_runtime::traits::CheckedAdd;
 use sp_runtime::{traits::AccountIdConversion, traits::Bounded};
 
 /// A liquidity pool.
@@ -52,8 +53,8 @@ impl<T: Config> LiquidityPool<T> {
 		T::Assets::set(id, &dex, asset_0.clone(), asset_0, T::LiquidityPoolTokenDecimals::get())?;
 
 		// Set next value to be used
+		// todo: use checked methods
 		<LiquidityPoolAssetIdGenerator<T>>::set(Some(id - 1u32.into()));
-
 		Ok(id)
 	}
 
@@ -82,6 +83,7 @@ impl<T: Config> LiquidityPool<T> {
 			);
 
 			// Calculate amount of second token based on existing ratio
+			// todo: use checked methods
 			let amount_1 = amount.0 * balances.1 / balances.0;
 			let liquidity_minted = amount.0 * total_issuance / balances.0;
 			// Transfer the assets from the liquidity provider to the pool and then mint their corresponding LP tokens
@@ -110,6 +112,7 @@ impl<T: Config> LiquidityPool<T> {
 		}
 
 		// Subtract fee from input amount, so liquidity providers can accrue rewards
+		// todo: use checked methods
 		let input_amount_with_fee = input_amount * T::SwapFeeValue::get();
 		let numerator = input_amount_with_fee * output_reserve;
 		let denominator = (input_reserve * T::SwapFeeUnits::get()) + input_amount_with_fee;
@@ -127,6 +130,7 @@ impl<T: Config> LiquidityPool<T> {
 		// Get balances of each asset in the pool and calculate the price
 		let input_reserve = <Pallet<T>>::balance(asset, &self.account);
 		let output_reserve = <Pallet<T>>::balance(other, &self.account);
+		// todo: use checked methods
 		Self::calculate(input_amount, input_reserve - input_amount, output_reserve)
 	}
 
@@ -178,6 +182,7 @@ impl<T: Config> LiquidityPool<T> {
 		);
 
 		// Calculate the amount of each asset to be withdrawn (which includes rewards from providing liquidity)
+		// todo: use checked methods
 		let amount_0 = amount * balances.0 / total_issuance;
 		let amount_1 = amount * balances.1 / total_issuance;
 
@@ -210,6 +215,7 @@ impl<T: Config> LiquidityPool<T> {
 				input_reserve > input_amount && output_reserve > <BalanceOf<T>>::default(),
 				Error::<T>::InsufficientBalance
 			);
+			// todo: use checked methods
 			let output_amount = <LiquidityPool<T>>::calculate(
 				input_amount,
 				input_reserve - input_amount,
@@ -229,6 +235,7 @@ impl<T: Config> LiquidityPool<T> {
 				input_reserve > input_amount && output_reserve > <BalanceOf<T>>::default(),
 				Error::<T>::InsufficientBalance
 			);
+			// todo: use checked methods
 			let output_amount = <LiquidityPool<T>>::calculate(
 				input_amount,
 				input_reserve - input_amount,
