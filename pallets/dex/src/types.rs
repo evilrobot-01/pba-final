@@ -6,6 +6,7 @@ use frame_support::{
 };
 use sp_runtime::{traits::AccountIdConversion, traits::Bounded};
 
+/// A liquidity pool.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct LiquidityPool<T: Config> {

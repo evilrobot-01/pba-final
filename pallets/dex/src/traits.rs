@@ -41,6 +41,6 @@ pub trait Swap<AccountId> {
 		amount: Self::Balance,
 		asset: Self::AssetId,
 		other: Self::AssetId,
-		buyer: AccountId,
+		buyer: &AccountId,
 	) -> DispatchResult;
 }

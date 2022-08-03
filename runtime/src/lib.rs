@@ -343,7 +343,6 @@ impl pallet_dex::Config for Runtime {
 }
 
 // Configure uniques pallet for runtime
-// todo: review config
 impl pallet_uniques::Config for Runtime {
 	type Event = Event;
 	type CollectionId = CollectionId;
@@ -376,8 +375,16 @@ impl pallet_marketplace::Config for Runtime {
 	type DEX = DEX;
 	/// The type used to identify a unique item within a collection
 	type ItemId = ItemId;
+	/// Identifier of the native asset identifier (proxy between native token and asset)
+	type NativeAssetId = NativeAssetId;
+	// Native currency: for swaps between native token and other assets
+	type NativeCurrency = Balances;
 	// Balance inspection for non-fungible assets
 	type Uniques = Uniques;
+	// Determines whether an asset exists
+	fn exists(id: Self::AssetId) -> bool {
+		Assets::maybe_total_supply(id).is_some()
+	}
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

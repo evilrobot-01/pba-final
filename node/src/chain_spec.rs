@@ -162,7 +162,7 @@ fn testnet_genesis(
 				// Token 0 ignored as determined from native token
 				(1, get_account_id_from_seed::<sr25519::Public>("Alice"), 10_000_000), // Alice has 10,000,000 EVIL
 				(2, get_account_id_from_seed::<sr25519::Public>("Alice"), 1_000_000),  // Alice has 1,000,000 WETH
-				(3, get_account_id_from_seed::<sr25519::Public>("Alice"), 500_000),    // Alice has 1,000,000 WBTC
+				(3, get_account_id_from_seed::<sr25519::Public>("Alice"), 500_000),    // Alice has 500,000 WBTC
 			],
 		},
 		aura: AuraConfig {

@@ -293,7 +293,7 @@ pub mod pallet {
 			ensure!(deadline > T::Time::now(), Error::<T>::DeadlinePassed); // Check whether deadline passed
 
 			// Forward to trait implementation (below)
-			<Self as traits::Swap<T::AccountId>>::swap(amount, asset, other, buyer)
+			<Self as traits::Swap<T::AccountId>>::swap(amount, asset, other, &buyer)
 		}
 	}
 
@@ -334,7 +334,7 @@ pub mod pallet {
 			amount: Self::Balance,
 			asset: Self::AssetId,
 			other: Self::AssetId,
-			buyer: T::AccountId,
+			buyer: &T::AccountId,
 		) -> DispatchResult {
 			// Check inputs
 			ensure!(amount != <BalanceOf<T>>::default(), Error::<T>::InvalidAmount); // Verify the amounts
