@@ -118,10 +118,10 @@ pub mod pallet {
 	pub(super) type LiquidityPools<T: Config> =
 		StorageMap<_, Twox64Concat, (AssetIdOf<T>, AssetIdOf<T>), LiquidityPool<T>>;
 
-	/// Stores a simple counter for liquidity pool token identifiers (starting at AssetIdOf<T>::max_value() and
+	/// Stores a simple counter for liquidity pool asset (token) identifiers (starting at AssetIdOf<T>::max_value() and
 	/// counting down).
 	#[pallet::storage]
-	pub(super) type LiquidityPoolTokenIdGenerator<T: Config> = StorageValue<_, AssetIdOf<T>>;
+	pub(super) type LiquidityPoolAssetIdGenerator<T: Config> = StorageValue<_, AssetIdOf<T>>;
 
 	// The various events emitted by the pallet.
 	#[pallet::event]

@@ -279,7 +279,6 @@ parameter_types! {
 }
 
 // Configure assets pallet for runtime
-// todo: review config
 impl pallet_assets::Config for Runtime {
 	// The overarching event type.
 	type Event = Event;
@@ -333,7 +332,7 @@ impl pallet_dex::Config for Runtime {
 	/// The units used when determining the swap fee (e.g. 1,000)
 	type SwapFeeUnits = ConstU128<1000>;
 	/// The value used to determine the swap fee rate (e.g. 1,000 - 997 = 0.3%)
-	type SwapFeeValue = ();
+	type SwapFeeValue = ConstU128<997>;
 	// A provider of time
 	type Time = pallet_timestamp::Pallet<Runtime>;
 	// Determines whether an asset exists
@@ -356,7 +355,7 @@ impl pallet_uniques::Config for Runtime {
 	type MetadataDepositBase = ();
 	type AttributeDepositBase = ();
 	type DepositPerByte = ();
-	type StringLimit = ();
+	type StringLimit = AssetMaxLength;
 	type KeyLimit = ();
 	type ValueLimit = ();
 	type WeightInfo = ();

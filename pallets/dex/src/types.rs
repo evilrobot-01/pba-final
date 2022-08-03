@@ -35,7 +35,7 @@ impl<T: Config> LiquidityPool<T> {
 		//  - Currently storing identifiers of liquidity pool tokens at end of u32 range due to time constraints
 		//  - This should ideally use a hash for asset id to make this easier, but seems assets pallet has a trait
 		// bound not provided by default hash type
-		let id = <LiquidityPoolTokenIdGenerator<T>>::get()
+Min		let id = <LiquidityPoolAssetIdGenerator<T>>::get()
 			.unwrap_or_else(|| AssetIdOf::<T>::max_value());
 
 		// Ensure asset id not already in use
@@ -52,7 +52,7 @@ impl<T: Config> LiquidityPool<T> {
 		T::Assets::set(id, &dex, asset_0.clone(), asset_0, T::LiquidityPoolTokenDecimals::get())?;
 
 		// Set next value to be used
-		<LiquidityPoolTokenIdGenerator<T>>::set(Some(id - 1u32.into()));
+		<LiquidityPoolAssetIdGenerator<T>>::set(Some(id - 1u32.into()));
 
 		Ok(id)
 	}
@@ -204,10 +204,17 @@ impl<T: Config> LiquidityPool<T> {
 		let input_amount = amount.0;
 		if amount.1 == self.pair.0 {
 			// Sell ASSET_0 for ASSET_1
-			let input_reserve = <Pallet<T>>::balance(self.pair.0, &self.account) - input_amount;
+			let input_reserve = <Pallet<T>>::balance(self.pair.0, &self.account);
 			let output_reserve = <Pallet<T>>::balance(self.pair.1, &self.account);
-			let output_amount =
-				<LiquidityPool<T>>::calculate(input_amount, input_reserve, output_reserve);
+			ensure!(
+				input_reserve > input_amount && output_reserve > <BalanceOf<T>>::default(),
+				Error::<T>::InsufficientBalance
+			);
+			let output_amount = <LiquidityPool<T>>::calculate(
+				input_amount,
+				input_reserve - input_amount,
+				output_reserve,
+			);
 
 			// Transfer assets
 			<Pallet<T>>::transfer(self.pair.0, &who, &self.account, input_amount)?;
@@ -216,10 +223,17 @@ impl<T: Config> LiquidityPool<T> {
 			Ok((output_amount, self.pair.1))
 		} else {
 			// Sell ASSET_1 for ASSET_0
-			let input_reserve = <Pallet<T>>::balance(self.pair.1, &self.account) - input_amount;
+			let input_reserve = <Pallet<T>>::balance(self.pair.1, &self.account);
 			let output_reserve = <Pallet<T>>::balance(self.pair.0, &self.account);
-			let output_amount =
-				<LiquidityPool<T>>::calculate(input_amount, input_reserve, output_reserve);
+			ensure!(
+				input_reserve > input_amount && output_reserve > <BalanceOf<T>>::default(),
+				Error::<T>::InsufficientBalance
+			);
+			let output_amount = <LiquidityPool<T>>::calculate(
+				input_amount,
+				input_reserve - input_amount,
+				output_reserve,
+			);
 
 			// Transfer assets
 			<Pallet<T>>::transfer(self.pair.0, &self.account, who, output_amount)?;
@@ -278,10 +292,10 @@ pub(super) struct Value<T: Config> {
 #[cfg(test)]
 mod tests {
 	use crate::mock::*;
-	use crate::LiquidityPool;
-	use frame_support::assert_ok;
+	use crate::{Error, LiquidityPool};
 	use frame_support::traits::fungible::Inspect as InspectFungible;
 	use frame_support::traits::fungibles::Inspect as InspectFungibles;
+	use frame_support::{assert_noop, assert_ok};
 
 	const ADMIN: u64 = 1;
 	const NATIVE_TOKEN: u32 = 0;
@@ -299,6 +313,17 @@ mod tests {
 			assert_eq!(pool.id, u32::MAX);
 			assert_eq!(pool.pair, (ASSET_0, ASSET_1));
 			assert_ne!(pool.account, 0);
+		});
+	}
+
+	#[test]
+	fn new_liquidity_detects_existing_id() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Assets::force_create(Origin::root(), u32::MAX, ADMIN, true, MIN_BALANCE));
+			assert_noop!(
+				<LiquidityPool<Test>>::new((ASSET_0, ASSET_1)),
+				<Error<Test>>::AssetAlreadyExists
+			);
 		});
 	}
 
@@ -429,6 +454,23 @@ mod tests {
 			assert_eq!(Assets::balance(ASSET_0, &LP), 1000 * UNITS);
 			assert_eq!(Assets::balance(ASSET_1, &LP), 1000 * UNITS);
 			assert_eq!(Assets::balance(pool.id, &LP), 0);
+		});
+	}
+
+	#[test]
+	fn remove_ensure_sufficient_balance() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+			assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 1000 * UNITS));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 1000 * UNITS));
+
+			let pool = <LiquidityPool<Test>>::new((ASSET_0, ASSET_1)).unwrap();
+			assert_ok!(pool.add((10 * UNITS, 500 * UNITS), &LP));
+			let lp_tokens = Assets::balance(pool.id, &LP);
+			assert_eq!(lp_tokens, (10 * UNITS));
+
+			assert_noop!(pool.remove(lp_tokens + 1, &LP), <Error<Test>>::InsufficientBalance);
 		});
 	}
 

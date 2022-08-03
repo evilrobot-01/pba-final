@@ -36,7 +36,7 @@ not currently provide any protection against front-runnning/sandwich attacks so 
   - A custom pallet implementing a simple decentralised exchange
   - Uses the [assets](https://github.com/paritytech/substrate/tree/master/frame/assets) pallet
   - A new asset is created for each liquidity pool. The asset identifiers start at the end of the `u32` range and
-        are decremented each time via the `LiquidityPoolTokenIdGenerator` storage item. This should ideally be using 
+        are decremented each time via the `LiquidityPoolAssetIdGenerator` storage item. This should ideally be using 
     hashes.
   - Liquidity rewards are generated via fees on each call to the `LiquidityPool.swap()` method (via 
     `LiquidityPool::calculate()`.
@@ -56,6 +56,7 @@ not currently provide any protection against front-runnning/sandwich attacks so 
   - Uses the [DEX](pallets/dex) pallet to auto-swap assets to facilitate buying/selling and minting using any 
     asset/token. The pallet will first request the current price from the DEX to ensure that the buyer/minter will 
     have sufficient after the swap to complete the purchase/mint.
+  - THe marketplace doesnt currently charge any fees.
 
 ### Genesis Config
 The [genesis config](node/src/chain_spec.rs) of the chain contains the below:

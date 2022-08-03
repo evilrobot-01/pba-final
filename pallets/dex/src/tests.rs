@@ -1,4 +1,5 @@
 use crate::{mock::*, Error, LiquidityPools};
+use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::DispatchError;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -6,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const ADMIN: u64 = 1;
 const ASSET_0: u32 = 1;
 const ASSET_1: u32 = 2;
+const BUYER: u64 = 827364;
 const DEADLINE: u64 = u64::MAX;
 const INVALID_ASSET: u32 = 21762531;
 const LP: u64 = 123; // Liquidity Provider
@@ -201,11 +203,341 @@ fn adds_liquidity() {
 		let pool = LiquidityPools::<Test>::get((ASSET_0, ASSET_1)).unwrap();
 		assert!(Assets::maybe_total_supply(pool.id).is_some());
 
-		// Check resulting balances and price
+		// Check resulting balances
 		assert_eq!(Assets::balance(ASSET_0, &LP), 80 * UNITS);
 		assert_eq!(Assets::balance(ASSET_1, &LP), 90 * UNITS);
 		assert_eq!(Assets::balance(pool.id, &LP), 20 * UNITS);
 	});
+}
+
+#[test]
+fn remove_liquidity_ensures_signed() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			DEX::remove_liquidity(Origin::none(), 0, ASSET_0, ASSET_1, DEADLINE),
+			DispatchError::BadOrigin
+		);
+	});
+}
+
+#[test]
+fn remove_liquidity_ensure_assets_unique() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			DEX::remove_liquidity(Origin::signed(LP), 0, ASSET_0, ASSET_0, DEADLINE),
+			Error::<Test>::IdenticalAssets
+		);
+	});
+}
+
+#[test]
+fn remove_liquidity_ensure_amount_valid() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			DEX::remove_liquidity(Origin::signed(LP), 0, ASSET_0, ASSET_1, DEADLINE),
+			Error::<Test>::InvalidAmount
+		);
+	});
+}
+
+#[test]
+fn remove_liquidity_ensure_within_deadline() {
+	new_test_ext().execute_with(|| {
+		let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+		Timestamp::set_timestamp(now);
+
+		assert_noop!(
+			DEX::remove_liquidity(Origin::signed(LP), 10 * UNITS, ASSET_0, ASSET_1, now - 10),
+			Error::<Test>::DeadlinePassed
+		);
+	});
+}
+
+#[test]
+fn remove_liquidity_ensure_pool_exists() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			DEX::remove_liquidity(Origin::signed(LP), 10 * UNITS, ASSET_0, ASSET_1, DEADLINE),
+			Error::<Test>::NoPool
+		);
+	});
+}
+
+#[test]
+fn remove_liquidity_ensure_balance_sufficient() {
+	new_test_ext().execute_with(|| {
+		// Create assets and fund
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0,
+			DEADLINE
+		));
+
+		assert_noop!(
+			DEX::remove_liquidity(Origin::signed(LP), (20 * UNITS) + 1, ASSET_1, ASSET_0, DEADLINE),
+			Error::<Test>::InsufficientBalance
+		);
+	});
+}
+
+#[test]
+fn removes_liquidity() {
+	new_test_ext().execute_with(|| {
+		// Create assets and fund
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0, // Intentionally placed lower id in second position to test ordering
+			DEADLINE
+		));
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &LP), 80 * UNITS);
+		assert_eq!(Assets::balance(ASSET_1, &LP), 90 * UNITS);
+		let pool = LiquidityPools::<Test>::get((ASSET_0, ASSET_1)).unwrap();
+		assert_eq!(Assets::balance(pool.id, &LP), 20 * UNITS);
+
+		assert_ok!(DEX::remove_liquidity(
+			Origin::signed(LP),
+			20 * UNITS,
+			ASSET_0,
+			ASSET_1,
+			DEADLINE
+		));
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &LP), 100 * UNITS);
+		assert_eq!(Assets::balance(ASSET_1, &LP), 100 * UNITS);
+		assert_eq!(Assets::balance(pool.id, &LP), 0);
+	});
+}
+
+#[test]
+fn removes_some_liquidity() {
+	new_test_ext().execute_with(|| {
+		// Create assets and fund
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0, // Intentionally placed lower id in second position to test ordering
+			DEADLINE
+		));
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &LP), 80 * UNITS);
+		assert_eq!(Assets::balance(ASSET_1, &LP), 90 * UNITS);
+		let pool = LiquidityPools::<Test>::get((ASSET_0, ASSET_1)).unwrap();
+		assert_eq!(Assets::balance(pool.id, &LP), 20 * UNITS);
+
+		assert_ok!(DEX::remove_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_0,
+			ASSET_1,
+			DEADLINE
+		));
+
+		assert_eq!(Assets::balance(ASSET_0, &LP), 90 * UNITS);
+		assert_eq!(Assets::balance(ASSET_1, &LP), 95 * UNITS);
+		assert_eq!(Assets::balance(pool.id, &LP), 10 * UNITS);
+	});
+}
+
+#[test]
+fn swap_ensures_signed() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			DEX::swap(Origin::none(), 0, ASSET_0, ASSET_1, DEADLINE),
+			DispatchError::BadOrigin
+		);
+	});
+}
+
+#[test]
+fn swap_ensure_within_deadline() {
+	new_test_ext().execute_with(|| {
+		let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+		Timestamp::set_timestamp(now);
+
+		assert_noop!(
+			DEX::swap(Origin::signed(BUYER), 10 * UNITS, ASSET_0, ASSET_1, now - 10),
+			Error::<Test>::DeadlinePassed
+		);
+	});
+}
+
+#[test]
+fn swap_ensure_amount_valid() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			DEX::swap(Origin::signed(BUYER), 0, ASSET_0, ASSET_1, DEADLINE),
+			Error::<Test>::InvalidAmount
+		);
+	});
+}
+
+#[test]
+fn swap_ensure_balance_sufficient() {
+	new_test_ext().execute_with(|| {
+		// Create assets and fund
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+
+		assert_noop!(
+			DEX::swap(Origin::signed(BUYER), (20 * UNITS) + 1, ASSET_1, ASSET_0, DEADLINE),
+			Error::<Test>::InsufficientBalance
+		);
+	});
+}
+
+#[test]
+fn swap_ensure_pool_exists() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, BUYER, 100 * UNITS));
+		assert_noop!(
+			DEX::swap(Origin::signed(BUYER), 10 * UNITS, ASSET_0, ASSET_1, DEADLINE),
+			Error::<Test>::NoPool
+		);
+	});
+}
+
+#[test]
+fn swap_empty_pool_asset_0() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, BUYER, 10 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0,
+			DEADLINE
+		));
+		assert_ok!(DEX::remove_liquidity(
+			Origin::signed(LP),
+			20 * UNITS,
+			ASSET_0,
+			ASSET_1,
+			DEADLINE
+		));
+		assert_noop!(
+			DEX::swap(Origin::signed(BUYER), 10 * UNITS, ASSET_1, ASSET_0, DEADLINE),
+			Error::<Test>::InsufficientBalance
+		);
+	});
+}
+
+#[test]
+fn swap_empty_pool_asset_1() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, BUYER, 10 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0,
+			DEADLINE
+		));
+		assert_ok!(DEX::remove_liquidity(
+			Origin::signed(LP),
+			20 * UNITS,
+			ASSET_0,
+			ASSET_1,
+			DEADLINE
+		));
+		assert_noop!(
+			DEX::swap(Origin::signed(BUYER), 10 * UNITS, ASSET_0, ASSET_1, DEADLINE),
+			Error::<Test>::InsufficientBalance
+		);
+	});
+}
+
+#[test]
+fn swaps_asset_0() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, BUYER, 10 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0,
+			DEADLINE
+		));
+		assert_ok!(DEX::swap(Origin::signed(BUYER), 10 * UNITS, ASSET_0, ASSET_1, DEADLINE));
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &BUYER), 0);
+		assert_eq!(Assets::balance(ASSET_1, &BUYER), 4992);
+		check_pool_balances((ASSET_0, ASSET_1), (30 * UNITS, 5008, 20 * UNITS));
+	});
+}
+
+#[test]
+fn swaps_asset_1() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, BUYER, 10 * UNITS));
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0,
+			DEADLINE
+		));
+		assert_ok!(DEX::swap(Origin::signed(BUYER), 5 * UNITS, ASSET_1, ASSET_0, DEADLINE));
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &BUYER), 9984);
+		assert_eq!(Assets::balance(ASSET_1, &BUYER), 5 * UNITS);
+		check_pool_balances((ASSET_0, ASSET_1), (10016, 15 * UNITS, 20 * UNITS));
+	});
+}
+
+fn check_pool_balances(pool: (u32, u32), expected: (u128, u128, u128)) {
+	let liquidity_pool = LiquidityPools::<Test>::get(pool).unwrap();
+	assert_eq!(Assets::balance(pool.0, &liquidity_pool.account), expected.0);
+	assert_eq!(Assets::balance(pool.1, &liquidity_pool.account), expected.1);
+	assert_eq!(Assets::total_issuance(liquidity_pool.id), expected.2);
 }
 
 #[test]
