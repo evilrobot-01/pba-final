@@ -307,6 +307,12 @@ mod tests {
 	const MIN_BALANCE: u128 = 1;
 
 	#[test]
+	fn liquidity_pool() {
+		let _pool =
+			LiquidityPool::<Test> { id: u32::MAX, pair: (ASSET_0, ASSET_1), account: 16254321 };
+	}
+
+	#[test]
 	fn new_liquidity_pool() {
 		new_test_ext().execute_with(|| {
 			let pool = <LiquidityPool<Test>>::new((ASSET_0, ASSET_1)).unwrap();
@@ -371,6 +377,36 @@ mod tests {
 			assert_eq!(Assets::balance(ASSET_0, &LP), 990 * UNITS);
 			assert_eq!(Assets::balance(ASSET_1, &LP), 500 * UNITS);
 			assert_eq!(Assets::balance(pool.id, &LP), 10 * UNITS);
+		});
+	}
+
+	#[test]
+	fn adds_additional_liquidity() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+			assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 1000 * UNITS));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 1000 * UNITS));
+
+			let pool = <LiquidityPool<Test>>::new((ASSET_0, ASSET_1)).unwrap();
+			assert_ok!(pool.add((10 * UNITS, 500 * UNITS), &LP));
+
+			assert_ok!(pool.add((5 * UNITS, 250 * UNITS), &LP));
+
+			// Check prices
+			assert_eq!(<LiquidityPool<Test>>::calculate(1 * UNITS, 10 * UNITS, 500 * UNITS), 45330);
+			assert_eq!(pool.calculate_price((1 * UNITS, ASSET_0)), 49859);
+			assert_eq!(pool.calculate_price((50 * UNITS, ASSET_1)), 997);
+
+			// Check pool balances
+			assert_eq!(Assets::balance(ASSET_0, pool.account), 15 * UNITS);
+			assert_eq!(Assets::balance(ASSET_1, pool.account), 750 * UNITS);
+			assert_eq!(Assets::total_issuance(pool.id), 15 * UNITS);
+
+			// Check liquidity provider balances
+			assert_eq!(Assets::balance(ASSET_0, &LP), 985 * UNITS);
+			assert_eq!(Assets::balance(ASSET_1, &LP), 250 * UNITS);
+			assert_eq!(Assets::balance(pool.id, &LP), 15 * UNITS);
 		});
 	}
 
@@ -576,6 +612,25 @@ mod tests {
 			// Check pool balances
 			assert_eq!(Assets::balance(ASSET_0, pool.account), 5008);
 			assert_eq!(Assets::balance(ASSET_1, pool.account), 750 * UNITS);
+		});
+	}
+
+	#[test]
+	fn swap_insufficient_balance_asset_1() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+			assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 1000 * UNITS));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 1000 * UNITS));
+			assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, BUYER, 500 * UNITS));
+
+			let pool = <LiquidityPool<Test>>::new((ASSET_0, ASSET_1)).unwrap();
+			pool.add((10 * UNITS, 500 * UNITS), &LP).unwrap();
+
+			assert_noop!(
+				pool.swap((500 * UNITS, ASSET_1), &BUYER),
+				<Error<Test>>::InsufficientBalance
+			);
 		});
 	}
 }

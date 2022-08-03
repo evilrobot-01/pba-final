@@ -5,6 +5,7 @@ use sp_runtime::DispatchError;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const ADMIN: u64 = 1;
+const ANOTHER_LP: u64 = 321; // Liquidity Provider
 const ASSET_0: u32 = 1;
 const ASSET_1: u32 = 2;
 const BUYER: u64 = 827364;
@@ -209,6 +210,55 @@ fn adds_liquidity() {
 		assert_eq!(Assets::balance(pool.id, &LP), 20 * UNITS);
 
 		check_pool_balances((ASSET_0, ASSET_1), (20 * UNITS, 10 * UNITS, 20 * UNITS));
+	});
+}
+
+#[test]
+fn adds_more_liquidity() {
+	new_test_ext().execute_with(|| {
+		// Create assets and fund
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_0, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::force_create(Origin::root(), ASSET_1, ADMIN, true, MIN_BALANCE));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, LP, 100 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_0, ANOTHER_LP, 2 * UNITS));
+		assert_ok!(Assets::mint(Origin::signed(ADMIN), ASSET_1, ANOTHER_LP, 1 * UNITS));
+
+		// Add liquidity to pool
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(LP),
+			10 * UNITS,
+			ASSET_1,
+			20 * UNITS,
+			ASSET_0, // Intentionally placed lower id in second position to test ordering
+			DEADLINE
+		));
+
+		// Ensure liquidity pool (and token) token created as asset
+		let pool = LiquidityPools::<Test>::get((ASSET_0, ASSET_1)).unwrap();
+		assert!(Assets::maybe_total_supply(pool.id).is_some());
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &LP), 80 * UNITS);
+		assert_eq!(Assets::balance(ASSET_1, &LP), 90 * UNITS);
+		assert_eq!(Assets::balance(pool.id, &LP), 20 * UNITS);
+		check_pool_balances((ASSET_0, ASSET_1), (20 * UNITS, 10 * UNITS, 20 * UNITS));
+
+		// Add more liquidity to pool
+		assert_ok!(DEX::add_liquidity(
+			Origin::signed(ANOTHER_LP),
+			2 * UNITS,
+			ASSET_0,
+			1 * UNITS,
+			ASSET_1,
+			DEADLINE
+		));
+
+		// Check resulting balances
+		assert_eq!(Assets::balance(ASSET_0, &ANOTHER_LP), 0);
+		assert_eq!(Assets::balance(ASSET_1, &ANOTHER_LP), 0);
+		assert_eq!(Assets::balance(pool.id, &ANOTHER_LP), 2 * UNITS);
+		check_pool_balances((ASSET_0, ASSET_1), (22 * UNITS, 11 * UNITS, 22 * UNITS));
 	});
 }
 
@@ -566,5 +616,12 @@ fn gets_price() {
 
 		// Price a swap
 		assert_eq!(DEX::price(5 * UNITS, ASSET_0, ASSET_1).unwrap(), 9984);
+	});
+}
+
+#[test]
+fn price_invalid_pool() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(DEX::price(5 * UNITS, ASSET_0, ASSET_1), Error::<Test>::NoPool);
 	});
 }

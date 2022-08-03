@@ -46,17 +46,19 @@ not currently provide any protection against front-runnning/sandwich attacks so 
   - A runtime API has also been implemented to provide price oracle functionality. The final portion of implementing a 
     RPC client could not be completed due to trait compiler issues, but I feel like I was on the right track. See 
     [here](node/src/rpc.rs) and [here](pallets/dex/rpc) and the end of [here](runtime/src/lib.rs).
+  - 97% test coverage ✅
 
 #### [Uniques](https://github.com/paritytech/substrate/tree/master/frame/uniques)
   - Existing FRAME pallet provided by Substrate, used to add non-fungible token support
 
 #### **[Marketplace](pallets/marketplace)**
-  - A custom pallet for implementing a very simple NFT marketplace
+  - A custom pallet for implementing a very simple NFT marketplace.
   - Uses the [uniques](https://github.com/paritytech/substrate/tree/master/frame/uniques) pallet
   - Uses the [DEX](pallets/dex) pallet to auto-swap assets to facilitate buying/selling and minting using any 
     asset/token. The pallet will first request the current price from the DEX to ensure that the buyer/minter will 
     have sufficient after the swap to complete the purchase/mint.
-  - THe marketplace doesnt currently charge any fees.
+  - The marketplace doesnt currently charge any fees.
+  - 0% test coverage 😞 - more of a 'prototype' at this stage.
 
 ### Genesis Config
 The [genesis config](node/src/chain_spec.rs) of the chain contains the below:
