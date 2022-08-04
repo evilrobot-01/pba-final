@@ -4,7 +4,6 @@ use frame_support::{
 	traits::fungibles::Mutate,
 	traits::fungibles::{Create, Inspect},
 };
-use sp_runtime::traits::CheckedAdd;
 use sp_runtime::{traits::AccountIdConversion, traits::Bounded};
 
 /// A liquidity pool.

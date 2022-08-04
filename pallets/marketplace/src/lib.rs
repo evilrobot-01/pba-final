@@ -42,6 +42,7 @@ type PriceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use frame_support::traits::tokens::fungibles::Transfer as TransferFungible;
 	use frame_support::traits::tokens::nonfungibles::Transfer;
 	use pallet_dex::traits::Price;
 
@@ -71,6 +72,10 @@ pub mod pallet {
 				AssetId = Self::AssetId,
 				Balance = NativeBalanceOf<Self>,
 			> + MutateFungible<
+				Self::AccountId,
+				AssetId = Self::AssetId,
+				Balance = NativeBalanceOf<Self>,
+			> + TransferFungible<
 				Self::AccountId,
 				AssetId = Self::AssetId,
 				Balance = NativeBalanceOf<Self>,

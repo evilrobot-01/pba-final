@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::HasCompact;
+use frame_support::traits::fungibles::Transfer;
 use frame_support::{
 	dispatch::DispatchResult, pallet_prelude::*, traits::fungibles::Create,
 	traits::fungibles::Inspect, traits::fungibles::Mutate,
@@ -65,7 +66,8 @@ pub mod pallet {
 				Self::AccountId,
 				AssetId = Self::AssetId,
 				Balance = NativeBalanceOf<Self>,
-			> + StorageInfoTrait;
+			> + StorageInfoTrait
+			+ Transfer<Self::AccountId, AssetId = Self::AssetId, Balance = NativeBalanceOf<Self>>;
 
 		// The minimum balance of the liquidity pool token (must be non-zero)
 		type LiquidityPoolTokenMinimumBalance: Get<

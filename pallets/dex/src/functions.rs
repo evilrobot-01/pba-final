@@ -46,7 +46,7 @@ impl<T: Config> Pallet<T> {
 			)
 		} else {
 			// Otherwise use asset transfer.
-			T::Assets::teleport(asset, source, destination, amount).map(|_| ())
+			T::Assets::transfer(asset, source, destination, amount, false).map(|_| ())
 		}
 	}
 }
