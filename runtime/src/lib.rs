@@ -270,7 +270,7 @@ pub type CollectionId = u64;
 pub type ItemId = u32;
 
 parameter_types! {
-	pub const AssetMaxLength: u32 = 15;
+	pub const AssetMaxLength: u32 = 25;
 	pub const DEXPalletId: PalletId = PalletId(*b"py/de-ex");
 	pub const LiquidityPoolTokenDecimals: u8 = 18;
 	pub const LiquidityPoolTokenMinimumBalance : u32 = 1;
