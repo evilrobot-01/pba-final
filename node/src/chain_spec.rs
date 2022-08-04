@@ -132,6 +132,12 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
+	const DECIMALS: u8 = 18;
+	fn units(value: u128) -> u128 {
+		value * 10u128.pow(DECIMALS as u32)
+	}
+	let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
 	GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -139,30 +145,30 @@ fn testnet_genesis(
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
-			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|k| (k, units(10))).collect(),
 		},
 		// Add default assets available at genesis
 		assets: AssetsConfig {
 			/// Genesis assets: asset id, owner (account id), is_sufficient, min_balance (>0)
 			assets: vec![
-				(0, get_account_id_from_seed::<sr25519::Public>("Alice"), true, 1),
-				(1, get_account_id_from_seed::<sr25519::Public>("Alice"), true, 1),
-				(2, get_account_id_from_seed::<sr25519::Public>("Alice"), true, 1),
-				(3, get_account_id_from_seed::<sr25519::Public>("Alice"), true, 1),
+				(0, alice.clone(), true, 1),
+				(1, alice.clone(), true, 1),
+				(2, alice.clone(), true, 1),
+				(3, alice.clone(), true, 1),
 			],
 			/// Genesis metadata: asset id, name, symbol, decimal places
 			metadata: vec![
-				(0, "Native Token".into(), "UNIT".into(), 18), // Proxy for native token
-				(1, "EVIL 🤖 Coin".into(), "EVIL 🤖".into(), 18),
-				(2, "Wrapped Ether".into(), "WETH".into(), 18),
-				(3, "Wrapped Bitcoin".into(), "WBTC".into(), 18),
+				(0, "Native Token".into(), "UNIT".into(), DECIMALS), // Proxy for native token
+				(1, "EVIL 🤖 Coin".into(), "EVIL 🤖".into(), DECIMALS),
+				(2, "Wrapped Ether".into(), "WETH".into(), DECIMALS),
+				(3, "Wrapped Bitcoin".into(), "WBTC".into(), DECIMALS),
 			],
 			/// Genesis accounts: id, account_id, balance
 			accounts: vec![
 				// Token 0 ignored as determined from native token
-				(1, get_account_id_from_seed::<sr25519::Public>("Alice"), 10_000_000), // Alice has 10,000,000 EVIL
-				(2, get_account_id_from_seed::<sr25519::Public>("Alice"), 1_000_000),  // Alice has 1,000,000 WETH
-				(3, get_account_id_from_seed::<sr25519::Public>("Alice"), 500_000),    // Alice has 500,000 WBTC
+				(1, alice.clone(), units(10_000_000)), // Alice has 10,000,000 EVIL
+				(2, alice.clone(), units(1_000_000)),  // Alice has 1,000,000 WETH
+				(3, alice.clone(), units(500_000)),    // Alice has 500,000 WBTC
 			],
 		},
 		aura: AuraConfig {
@@ -172,19 +178,19 @@ fn testnet_genesis(
 			/// Genesis liquidity pools: ((amount, asset), (amount, asset), liquidity provider)
 			liquidity_pools: vec![
 				(
-					(100_000, 0),    // Native
-					(10_000_000, 1), // EVIL
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					(units(1), 0),          // Native
+					(units(10_000_000), 1), // EVIL
+					alice.clone(),
 				),
 				(
-					(100_000, 0),   // Native
-					(1_000_000, 2), // WETH
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					(units(1), 0),         // Native
+					(units(1_000_000), 2), // WETH
+					alice.clone(),
 				),
 				(
-					(100_000, 0), // Native
-					(500_000, 3), // WBTC
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					(units(1), 0),       // Native
+					(units(500_000), 3), // WBTC
+					alice,
 				),
 			],
 		},
